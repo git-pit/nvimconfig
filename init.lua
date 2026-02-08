@@ -54,3 +54,25 @@ cmp.setup({
 		['C-n'] = cmp.mapping.complete(),
 	}),
 })
+
+vim.api.nvim_create_autocmd({ "TermRequest" }, {
+    desc = "Manipulates 'path' option on dir change",
+    callback = function(ev)
+        local val, n = string.gsub(ev.data.sequence, "\027]7;file://[^/]*", "")
+        if n > 0 then
+            -- OSC 7: dir-change
+            local dir = val
+            if vim.fn.isdirectory(dir) == 0 then
+                vim.notify("invalid dir: " .. dir)
+                return
+            end
+            if vim.api.nvim_get_current_buf() == ev.buf then
+                if vim.b[ev.buf].osc7_dir then
+                    vim.cmd("setlocal path-=" .. vim.b[ev.buf].osc7_dir)
+                end
+                vim.cmd("setlocal path+=" .. dir)
+                vim.b[ev.buf].osc7_dir = dir
+            end
+        end
+    end,
+})
