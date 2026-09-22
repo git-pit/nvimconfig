@@ -1,78 +1,28 @@
-require('packages')
-vim.cmd("source ~/.vimrc")
-local term_path = string.format("%s/term.vim", vim.fn.stdpath("config"))
-vim.cmd("source " .. term_path)
+vim.g.mapleader = ' '
+vim.loader.enable()
+vim.pack.add({ { src = 'https://github.com/nvim-tree/nvim-web-devicons' } })
+vim.pack.add({ { src = 'https://github.com/nvim-lua/plenary.nvim' } })
 
+-- lsp plugins
+require("extensions/blink")
+require("extensions/mason")
+require("extensions/lsp")
 
--- Reserve a space in the gutter
--- This will avoid an annoying layout shift in the screen
-vim.opt.signcolumn = 'yes'
+-- lsp extensions
+require("extensions/lazydev")
 
--- This should be executed before you configure any language server
-local lspconfig_defaults = require('lspconfig').util.default_config
-lspconfig_defaults.capabilities = vim.tbl_deep_extend(
-	'force',
-	lspconfig_defaults.capabilities,
-	require('cmp_nvim_lsp').default_capabilities()
-)
+-- file manager extensions
+require("extensions/yazi")
+-- require("extensions/zoxide")
 
--- This is where you enable features that only work
--- if there is a language server active in the file
-vim.api.nvim_create_autocmd('LspAttach', {
-	desc = 'LSP actions',
-	callback = function(event)
-		local opts = { buffer = event.buf }
+-- search plugins
+require("extensions/fzf")
 
-		vim.keymap.set('n', 'K', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
-		vim.keymap.set('n', 'gd', '<cmd>lua vim.lsp.buf.definition()<cr>', opts)
-		vim.keymap.set('n', 'gD', '<cmd>lua vim.lsp.buf.declaration()<cr>', opts)
-		vim.keymap.set('n', 'gi', '<cmd>lua vim.lsp.buf.implementation()<cr>', opts)
-		vim.keymap.set('n', 'go', '<cmd>lua vim.lsp.buf.type_definition()<cr>', opts)
-		vim.keymap.set('n', 'gr', '<cmd>lua vim.lsp.buf.references()<cr>', opts)
-		vim.keymap.set('n', 'gs', '<cmd>lua vim.lsp.buf.signature_help()<cr>', opts)
-		vim.keymap.set('n', '<F2>', '<cmd>lua vim.lsp.buf.rename()<cr>', opts)
-		vim.keymap.set({ 'n', 'x' }, '<F3>', '<cmd>lua vim.lsp.buf.format({async = true})<cr>', opts)
-		vim.keymap.set('n', '<F4>', '<cmd>lua vim.lsp.buf.code_action()<cr>', opts)
-	end,
-})
+-- movement plugins
+require("extensions/hop")
 
-local cmp = require('cmp')
+-- git extensions
+require("extensions/fugitive")
 
-cmp.setup({
-	sources = {
-		{ name = 'nvim_lsp' },
-	},
-	preselect = 'item',
-	experimental = {
-		ghost_text = true,
-	},
-	completion = {
-		autocomplete = false,
-		completeopt = 'menu,menuone,noinsert',
-	},
-	mapping = cmp.mapping.preset.insert({
-		['C-n'] = cmp.mapping.complete(),
-	}),
-})
-
-vim.api.nvim_create_autocmd({ "TermRequest" }, {
-    desc = "Manipulates 'path' option on dir change",
-    callback = function(ev)
-        local val, n = string.gsub(ev.data.sequence, "\027]7;file://[^/]*", "")
-        if n > 0 then
-            -- OSC 7: dir-change
-            local dir = val
-            if vim.fn.isdirectory(dir) == 0 then
-                vim.notify("invalid dir: " .. dir)
-                return
-            end
-            if vim.api.nvim_get_current_buf() == ev.buf then
-                if vim.b[ev.buf].osc7_dir then
-                    vim.cmd("setlocal path-=" .. vim.b[ev.buf].osc7_dir)
-                end
-                vim.cmd("setlocal path+=" .. dir)
-                vim.b[ev.buf].osc7_dir = dir
-            end
-        end
-    end,
-})
+require("keymaps")
+require("vimopts")
