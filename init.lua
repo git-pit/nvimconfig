@@ -30,6 +30,7 @@ require("extensions/gitsigns")
 
 -- misc
 require("extensions/overseer")
+require("extensions/codecompanion")
 
 require("keymaps")
 require("vimopts")
