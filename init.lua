@@ -23,6 +23,7 @@ require("extensions/hop")
 
 -- git extensions
 require("extensions/fugitive")
+require("extensions/gitsigns")
 
 require("keymaps")
 require("vimopts")
