@@ -2,6 +2,7 @@ vim.g.mapleader = ' '
 vim.loader.enable()
 vim.pack.add({ { src = 'https://github.com/nvim-tree/nvim-web-devicons' } })
 vim.pack.add({ { src = 'https://github.com/nvim-lua/plenary.nvim' } })
+vim.pack.add({ { src = 'https://github.com/nvim-treesitter/nvim-treesitter' } })
 
 -- lsp plugins
 require("extensions/blink")
