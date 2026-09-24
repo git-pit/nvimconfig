@@ -61,7 +61,7 @@ local function save_session(file)
 end
 
 function M.setup()
-	vim.opt.signcolumn = 'yes:2'
+	vim.opt.signcolumn = 'yes:1'
 	vim.opt.tags = { './tags', './tags;', '~/.vim/all_tags' }
 	vim.opt.relativenumber = true
 	vim.opt.number = true
