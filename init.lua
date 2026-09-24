@@ -18,6 +18,7 @@ require("extensions/yazi")
 
 -- search plugins
 require("extensions/fzf")
+require("extensions/zoxide")
 
 -- movement plugins
 require("extensions/hop")
