@@ -8,9 +8,8 @@ function M.setup()
       width = 1,
       height = 1,
     }
-  }
-  )
-
+  })
+  fzf.register_ui_select()
 
   vim.keymap.set('n', '<leader>fl', '<cmd>FzfLua<cr>')
 
