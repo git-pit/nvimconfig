@@ -2,7 +2,15 @@ local M = {}
 
 function M.setup()
   vim.pack.add({ { src = 'https://github.com/ibhagwan/fzf-lua' } })
-  require('fzf-lua').setup({ })
+  local fzf = require('fzf-lua')
+  fzf.setup({
+    winopts = {
+      width = 1,
+      height = 1,
+    }
+  }
+  )
+
 
   vim.keymap.set('n', '<leader>fl', '<cmd>FzfLua<cr>')
 
