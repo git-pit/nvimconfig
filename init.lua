@@ -28,5 +28,8 @@ require("extensions/hop")
 require("extensions/fugitive")
 require("extensions/gitsigns")
 
+-- misc
+require("extensions/overseer")
+
 require("keymaps")
 require("vimopts")
