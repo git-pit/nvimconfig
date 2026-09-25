@@ -43,6 +43,11 @@ function M.setup()
 
   -- Overseer is set up before nvim-dap is installed in init.lua.
   overseer.enable_dap()
+
+  -- Python dap
+  require("extensions/dap/python").setup(dap)
+
+  -- CPP dap
   overseer.register_template({
     name = "C++: make",
     builder = function()
@@ -106,7 +111,7 @@ function M.setup()
       preLaunchTask = "C++: make",
       program = executable,
       cwd = project_dir,
-      args = function () return vim.split(vim.fn.input("Args: "), ' ', { trimempty = true }) end,
+      args = function() return vim.split(vim.fn.input("Args: "), ' ', { trimempty = true }) end,
       stopOnEntry = false,
     },
     {
@@ -140,8 +145,13 @@ function M.setup()
     icons = { expanded = "", collapsed = "", current_frame = "" },
     -- Only bind actions supported by each panel.
     mappings = {
-      expand = {}, open = {}, remove = {}, edit = {},
-      repl = {}, toggle = {}, watch = {},
+      expand = {},
+      open = {},
+      remove = {},
+      edit = {},
+      repl = {},
+      toggle = {},
+      watch = {},
     },
     element_mappings = {
       scopes = {
@@ -196,7 +206,10 @@ function M.setup()
     },
     render = { indent = 1, max_value_lines = 100 },
   })
-  require("nvim-dap-virtual-text").setup({ virt_text_pos = "eol" })
+  require("nvim-dap-virtual-text").setup({
+    virt_text_pos = "eol",
+    enabled = true,
+  })
 
   local arrow_steps = {
     ["<Right>"] = { dap.step_into, "Debug: step into" },
@@ -227,8 +240,6 @@ function M.setup()
   end
 
   dap.listeners.after.event_initialized.dapui = function()
-    dapui.close()
-    dapui.open()
     enable_arrow_steps()
   end
   dap.listeners.before.event_terminated.dapui = function()
