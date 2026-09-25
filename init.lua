@@ -32,6 +32,7 @@ require("extensions/gitsigns")
 require("extensions/overseer")
 require("extensions/surround")
 require("extensions/codecompanion")
+require("extensions/dap")
 
 require("keymaps")
 require("vimopts")
