@@ -54,7 +54,19 @@ function M.setup()
     end,
   })
 
-  local lldb_dap = vim.fn.exepath("lldb-dap")
+  local lldb_dap = ""
+  if vim.fn.has("mac") == 1 and vim.fn.executable("brew") == 1 then
+    local llvm = vim.system({ "brew", "--prefix", "llvm" }, { text = true }):wait()
+    if llvm.code == 0 then
+      local candidate = vim.fn.trim(llvm.stdout) .. "/bin/lldb-dap"
+      if vim.fn.executable(candidate) == 1 then
+        lldb_dap = candidate
+      end
+    end
+  end
+  if lldb_dap == "" then
+    lldb_dap = vim.fn.exepath("lldb-dap")
+  end
   if lldb_dap == "" and vim.fn.has("mac") == 1 then
     lldb_dap = vim.fn.trim(vim.fn.system({ "xcrun", "--find", "lldb-dap" }))
   end
@@ -69,6 +81,13 @@ function M.setup()
     name = "lldb",
   }
   dap.adapters["lldb-dap"] = dap.adapters.lldb
+  dap.listeners.on_config.dapui_console = function(config)
+    if config.request == "launch" and (config.type == "lldb" or config.type == "lldb-dap")
+      and config.console == nil then
+      config.console = "integratedTerminal"
+    end
+    return config
+  end
 
   local fallback = {
     {
@@ -132,7 +151,7 @@ function M.setup()
         size = 42,
       },
       {
-        elements = { "repl" },
+        elements = { "console" },
         position = "bottom",
         size = 10,
       },
@@ -140,7 +159,7 @@ function M.setup()
     floating = { border = "single", mappings = { close = { "q", "<Esc>" } } },
     controls = {
       enabled = true,
-      element = "repl",
+      element = "console",
       icons = {
         pause = "",
         play = "",
@@ -154,8 +173,6 @@ function M.setup()
     },
     render = { indent = 1, max_value_lines = 100 },
   })
-  -- Keep an explicitly requested integrated terminal visible outside the output pane.
-  dap.defaults.fallback.terminal_win_cmd = "belowright new"
   require("nvim-dap-virtual-text").setup({ virt_text_pos = "eol" })
 
   local arrow_steps = {
@@ -191,15 +208,12 @@ function M.setup()
     enable_arrow_steps()
   end
   dap.listeners.before.event_terminated.dapui = function()
-    dapui.close()
     disable_arrow_steps()
   end
   dap.listeners.before.event_exited.dapui = function()
-    dapui.close()
     disable_arrow_steps()
   end
   dap.listeners.after.disconnect.dapui = function()
-    dapui.close()
     disable_arrow_steps()
   end
 
@@ -209,6 +223,22 @@ function M.setup()
   vim.keymap.set("n", "<S-F11>", dap.step_out, { desc = "Debug: step out" })
   vim.keymap.set("n", "<leader>db", dap.toggle_breakpoint, { desc = "Debug: toggle breakpoint" })
   vim.keymap.set("n", "<leader>du", dapui.toggle, { desc = "Debug: toggle panels" })
+  vim.keymap.set("n", "<leader>di", function()
+    local buf = dapui.elements.console.buffer()
+    if vim.bo[buf].buftype ~= "terminal" then
+      vim.notify("No active debug terminal", vim.log.levels.INFO)
+      return
+    end
+    local win = vim.fn.bufwinid(buf)
+    if win == -1 then
+      dapui.open()
+      win = vim.fn.bufwinid(buf)
+    end
+    if win ~= -1 then
+      vim.api.nvim_set_current_win(win)
+      vim.cmd.startinsert()
+    end
+  end, { desc = "Debug: focus program terminal" })
   vim.keymap.set({ "n", "v" }, "<leader>de", dapui.eval, { desc = "Debug: evaluate expression" })
   vim.keymap.set("n", "<leader>dw", function()
     dapui.elements.watches.add(vim.fn.expand("<cword>"))
