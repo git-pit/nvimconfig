@@ -134,19 +134,32 @@ function M.setup()
   end
 
   local dapui = require("dapui")
+  require("extensions.dapui_edit").setup()
   dapui.setup({
     wrap = false,
     icons = { expanded = "", collapsed = "", current_frame = "" },
+    -- Only bind actions supported by each panel.
     mappings = {
-      expand = { "<CR>", "<2-LeftMouse>" },
-      open = "o",
-      remove = "d",
-      edit = "e",
-      repl = "r",
-      toggle = "t",
-      watch = "w",
+      expand = {}, open = {}, remove = {}, edit = {},
+      repl = {}, toggle = {}, watch = {},
     },
-    element_mappings = {},
+    element_mappings = {
+      scopes = {
+        expand = { "<CR>", "<2-LeftMouse>" },
+        edit = "e",
+        repl = "r",
+        watch = "w",
+      },
+      watches = {
+        expand = { "<CR>", "<2-LeftMouse>" },
+        edit = "e",
+        remove = "d",
+        repl = "r",
+      },
+      stacks = { open = { "<CR>", "o" }, toggle = "t" },
+      breakpoints = { open = { "<CR>", "o" }, remove = "d", toggle = "t" },
+      hover = { edit = "e" },
+    },
     expand_lines = true,
     force_buffers = true,
     layouts = {
