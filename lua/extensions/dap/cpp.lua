@@ -32,12 +32,20 @@ function M.setup(dap, overseer)
   end
 
   overseer.register_template({
-    name = "C++: make",
+    name = "make",
     builder = function()
       return {
         cmd = { "make" },
         cwd = make_project_dir(),
-        components = { "default" },
+        components = {
+          {
+            "on_output_quickfix",
+            open_on_exit = "failure",
+            open_height = 8,
+            errorformat = vim.o.errorformat,
+          },
+          "default",
+        },
       }
     end,
   })
@@ -82,20 +90,22 @@ function M.setup(dap, overseer)
       name = "Build with make and debug",
       type = "lldb",
       request = "launch",
-      preLaunchTask = "C++: make",
+      preLaunchTask = "make",
       program = find_make_executable,
       cwd = make_project_dir,
       stopOnEntry = false,
+      console = "integratedTerminal",
     },
     {
       name = "Build with make and debug with args",
       type = "lldb",
       request = "launch",
-      preLaunchTask = "C++: make",
+      preLaunchTask = "make",
       program = find_make_executable,
       cwd = make_project_dir,
       args = function() return vim.split(vim.fn.input("Args: "), ' ', { trimempty = true }) end,
       stopOnEntry = false,
+      console = "integratedTerminal",
     },
     {
       name = "Debug executable (no build)",
@@ -104,6 +114,7 @@ function M.setup(dap, overseer)
       program = find_make_executable,
       cwd = make_project_dir,
       stopOnEntry = false,
+      console = "integratedTerminal",
     },
   }
   dap.providers.configs["cpp.make_fallback"] = function(bufnr)
