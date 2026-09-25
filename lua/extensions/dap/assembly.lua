@@ -5,6 +5,8 @@ local state = {
   generation = 0,
   instructions = {},
   registers = {},
+  function_registers = {},
+  function_addresses = {},
 }
 
 local function address_key(address)
@@ -81,33 +83,69 @@ local function explain(instruction)
   return nil
 end
 
-local function relevant_registers(instruction, registers)
+local x86_aliases = {
+  eax = "rax", ax = "rax", ah = "rax", al = "rax",
+  ebx = "rbx", bx = "rbx", bh = "rbx", bl = "rbx",
+  ecx = "rcx", cx = "rcx", ch = "rcx", cl = "rcx",
+  edx = "rdx", dx = "rdx", dh = "rdx", dl = "rdx",
+  esi = "rsi", si = "rsi", sil = "rsi",
+  edi = "rdi", di = "rdi", dil = "rdi",
+  ebp = "rbp", bp = "rbp", bpl = "rbp",
+  esp = "rsp", spl = "rsp",
+  eip = "rip", ip = "rip",
+}
+
+local function register_name(word)
+  local name = word:lower()
+  if name == "fp" then return "x29" end
+  if name == "lr" then return "x30" end
+  if name == "wsp" then return "sp" end
+  if name == "wzr" then return "xzr" end
+  if name:match("^w%d+$") then return "x" .. name:sub(2) end
+  local vector = name:match("^[qdshb](%d+)$")
+  if vector then return "v" .. vector end
+  if x86_aliases[name] then return x86_aliases[name] end
+  local rnum = name:match("^(r%d+)[dwb]$")
+  if rnum then return rnum end
+  if name:match("^[xvqdshb]%d+$") or name:match("^r%d+$")
+      or name:match("^[xyz]mm%d+$") then return name end
+  if name:match("^r[a-d]x$") or name:match("^r[bs]p$")
+      or name == "rsi" or name == "rdi" or name == "rip" or name == "rflags"
+      or name == "eflags" or name == "sp" or name == "pc" or name == "nzcv"
+      or name == "xzr" then return name end
+  return nil
+end
+
+local function instruction_registers(instruction)
   local names, seen = {}, {}
-  local function add(name)
-    name = name:lower()
-    if name == "fp" then name = "x29" end
-    if name == "lr" then name = "x30" end
-    if name:match("^w%d+$") then name = "x" .. name:sub(2) end
-    if registers[name] and not seen[name] then
+  local function add(word)
+    local name = register_name(word)
+    if name and not seen[name] then
       names[#names + 1] = name
       seen[name] = true
     end
   end
-  for word in instruction:lower():gmatch("[%a_][%w_]*") do add(word) end
-  add(registers.pc and "pc" or "rip")
-  add(registers.sp and "sp" or "rsp")
-  local mnemonic = instruction:lower():match("^%s*([%w%.]+)") or ""
+  local mnemonic, operands = instruction:lower():match("^%s*([%w%.]+)%s*(.-)%s*$")
+  mnemonic, operands = mnemonic or "", operands or ""
+  operands = operands:gsub("0x[%x]+", "")
+  for word in operands:gmatch("[%a_][%w_]*") do add(word) end
   if mnemonic == "cmp" or mnemonic == "cmn" or mnemonic == "tst" or mnemonic == "test"
-      or mnemonic:match("^b%.") or (mnemonic:match("^j[%a]+$") and mnemonic ~= "jmp") then
-    add(registers.nzcv and "nzcv" or "rflags")
+      or mnemonic == "adds" or mnemonic == "subs" or mnemonic:match("^b%.")
+      or (mnemonic:match("^j[%a]+$") and mnemonic ~= "jmp") then
+    add("nzcv")
+    add("rflags")
   end
   return names
 end
 
-local function render()
-  local buf = state.buf
+local function register_value(name)
+  if name == "xzr" then return "0" end
+  return state.registers[name] or "unavailable"
+end
+
+local function render_registers()
+  local buf = state.register_buf
   if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
-  local lines = { "Assembly — current frame", "" }
   local current_instruction
   for _, item in ipairs(state.instructions) do
     if address_key(item.address) == address_key(state.pc) then
@@ -115,17 +153,39 @@ local function render()
       break
     end
   end
-  local names = relevant_registers(current_instruction or "", state.registers)
-  if #names == 0 then
-    lines[#lines + 1] = state.register_status or "Registers: loading…"
-  else
-    lines[#lines + 1] = "Registers used here:"
-    for _, name in ipairs(names) do
-      lines[#lines + 1] = string.format("  %-7s %s", name, state.registers[name])
+  local lines = { "Current instruction" }
+  local current_names = instruction_registers(current_instruction or "")
+  current_names[#current_names + 1] = state.registers.pc and "pc" or "rip"
+  current_names[#current_names + 1] = state.registers.sp and "sp" or "rsp"
+  local shown = {}
+  local count = 0
+  for _, name in ipairs(current_names) do
+    if not shown[name] and (state.registers[name] or name == "xzr") then
+      lines[#lines + 1] = string.format("  %-7s %s", name, register_value(name))
+      shown[name] = true
+      count = count + 1
     end
   end
+  if count == 0 then lines[#lines + 1] = state.register_status or "Registers: loading…" end
   lines[#lines + 1] = ""
-  lines[#lines + 1] = "Instructions:"
+  lines[#lines + 1] = "Current function: " .. (state.function_name or "loading…")
+  if #state.function_registers == 0 then
+    lines[#lines + 1] = state.function_status or "Scanning function…"
+  else
+    for _, name in ipairs(state.function_registers) do
+      lines[#lines + 1] = string.format("  %-7s %s", name, register_value(name))
+    end
+  end
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+end
+
+local function render()
+  local buf = state.buf
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
+  render_registers()
+  local lines = { "Assembly — current frame", "" }
   local current_line
   for _, item in ipairs(state.instructions) do
     local current = address_key(item.address) == address_key(state.pc)
@@ -173,6 +233,18 @@ local function open_view()
   vim.wo[state.win].number = false
   vim.wo[state.win].relativenumber = false
   vim.wo[state.win].wrap = false
+  state.register_buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[state.register_buf].buftype = "nofile"
+  vim.bo[state.register_buf].bufhidden = "wipe"
+  vim.bo[state.register_buf].swapfile = false
+  vim.cmd("aboveleft split")
+  state.register_win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(state.register_win, state.register_buf)
+  vim.api.nvim_win_set_height(state.register_win, 14)
+  vim.wo[state.register_win].number = false
+  vim.wo[state.register_win].relativenumber = false
+  vim.wo[state.register_win].wrap = false
+  vim.wo[state.register_win].winfixheight = true
   render()
   if vim.api.nvim_win_is_valid(state.source_win) then
     vim.api.nvim_set_current_win(state.source_win)
@@ -180,10 +252,13 @@ local function open_view()
 end
 
 local function close_view()
+  if state.register_win and vim.api.nvim_win_is_valid(state.register_win) then
+    vim.api.nvim_win_close(state.register_win, true)
+  end
   if state.win and vim.api.nvim_win_is_valid(state.win) then
     vim.api.nvim_win_close(state.win, true)
   end
-  state.win, state.buf = nil, nil
+  state.win, state.buf, state.register_win, state.register_buf = nil, nil, nil, nil
   if state.source_win and vim.api.nvim_win_is_valid(state.source_win) then
     vim.api.nvim_set_current_win(state.source_win)
   end
@@ -192,6 +267,51 @@ end
 
 local function valid_request(session, generation)
   return state.enabled and state.session == session and state.generation == generation
+end
+
+local function scan_function(session, frame, generation)
+  if state.function_name == frame.name and state.function_addresses[address_key(state.pc)] then
+    return
+  end
+  state.function_name = frame.name
+  state.function_registers = {}
+  state.function_addresses = {}
+  state.function_status = "Scanning function…"
+  render()
+  local prefix = session.config.commandEscapePrefix
+  if prefix == nil then prefix = "`" end
+  session:request("evaluate", {
+    expression = prefix .. "disassemble --frame",
+    context = "repl",
+    frameId = frame.id,
+  }, function(err, response)
+    if not valid_request(session, generation) then return end
+    if err or not response or not response.result then
+      state.function_status = "Function disassembly unavailable"
+      render()
+      return
+    end
+    local names, seen, addresses = {}, {}, {}
+    for line in response.result:gmatch("[^\r\n]+") do
+      local address, instruction = line:match("(0[xX][%x]+)%s*<[^>]+>:%s*(.+)$")
+      if not address then address, instruction = line:match("(0[xX][%x]+):%s*(.+)$") end
+      if address and instruction then
+        addresses[address_key(address)] = true
+        local code = instruction:match("^(.-)%s*;") or instruction
+        for _, name in ipairs(instruction_registers(code)) do
+          if not seen[name] then
+            names[#names + 1] = name
+            seen[name] = true
+          end
+        end
+      end
+    end
+    state.function_addresses = addresses
+    state.function_registers = names
+    state.function_status = next(addresses) and "No named registers in this function"
+        or "Could not read function instructions"
+    render()
+  end)
 end
 
 local function fetch_registers(session, frame, generation)
@@ -258,6 +378,7 @@ local function refresh(session)
     render()
     return
   end
+  scan_function(session, frame, generation)
   session:request("disassemble", {
     memoryReference = state.pc,
     instructionOffset = -12,
@@ -301,6 +422,13 @@ function M.setup(dap)
     refresh(session)
     vim.notify("Debug stepping: assembly")
   end, { desc = "Debug: toggle source/assembly stepping and view" })
+  vim.keymap.set("n", "<leader>dg", function()
+    if state.register_win and vim.api.nvim_win_is_valid(state.register_win) then
+      vim.api.nvim_set_current_win(state.register_win)
+    else
+      vim.notify("Open the assembly view with <leader>da first", vim.log.levels.INFO)
+    end
+  end, { desc = "Debug: focus assembly registers" })
 
   dap.listeners.after.stackTrace.assembly_view = function(session)
     if state.enabled and session == state.session and session.current_frame then refresh(session) end
