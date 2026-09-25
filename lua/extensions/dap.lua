@@ -18,21 +18,14 @@ function M.setup()
   -- CPP dap
   require("extensions/dap/cpp").setup(dap, overseer)
 
+  -- DAP UI
   -- require("extensions/dap/dap_ui").setup()
 
   -- Virtual text
   require("extensions/dap/virtual_text").setup()
 
-  vim.keymap.set("n", "<leader>dc", dap.continue, { desc = "Debug: start/continue" })
-  vim.keymap.set("n", "<F10>", dap.step_over, { desc = "Debug: step over" })
-  vim.keymap.set("n", "<F11>", dap.step_into, { desc = "Debug: step into" })
-  vim.keymap.set("n", "<S-F11>", dap.step_out, { desc = "Debug: step out" })
-  vim.keymap.set("n", "<leader>db", dap.toggle_breakpoint, { desc = "Debug: toggle breakpoint" })
-  vim.keymap.set("n", "<leader>dC", function()
-    dap.toggle_breakpoint(vim.fn.input("Condition: "))
-  end, { desc = "Debug: toggle conditional breakpoint" })
-  vim.keymap.set("n", "<leader>dr", dap.repl.open, { desc = "Debug: open REPL" })
-  vim.keymap.set("n", "<leader>dt", dap.terminate, { desc = "Debug: terminate" })
+  -- Keymaps
+  require("extensions/dap/keymaps").setup(dap)
 end
 
 M.setup()
