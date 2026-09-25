@@ -171,7 +171,7 @@ function M.setup()
           { id = "breakpoints", size = 0.15 },
         },
         position = "right",
-        size = 42,
+        size = 67,
       },
       {
         elements = { "console" },
