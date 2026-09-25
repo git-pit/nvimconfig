@@ -30,8 +30,8 @@ function M.setup()
 
   -- Misc
   vim.keymap.set({ 'n', 'v' }, '<M-b>', '<cmd>FzfLua buffers<cr>')
-  vim.keymap.set({ 'n', 'v' }, '<leader>fb', '<cmd>FzfLua buffers<cr>')
-  vim.keymap.set({ 'n', 'v' }, '<leader>fB', '<cmd>FzfLua blines<cr>')
+  vim.keymap.set({ 'n', 'v' }, '<leader>fb', '<cmd>FzfLua blines<cr>')
+  vim.keymap.set({ 'n', 'v' }, '<leader>fB', '<cmd>FzfLua buffers<cr>')
   vim.keymap.set({ 'n', 'v' }, '<leader>fk', '<cmd>FzfLua keymaps<cr>')
   vim.keymap.set({ 'n', 'v' }, '<leader>fo', '<cmd>FzfLua nvim_options<cr>')
   vim.keymap.set({ 'n', 'v' }, '<leader>fr', '<cmd>FzfLua registers<cr>')
