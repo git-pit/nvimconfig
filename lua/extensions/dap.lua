@@ -16,7 +16,7 @@ local function executable()
       for output in (result.stdout or ""):gmatch("%-o%s+([^%s]+)") do
         output = output:gsub("^[\"']", ""):gsub("[\"']$", "")
         if not output:match("%.o$") and not output:match("%.a$")
-          and not output:match("%.so$") and not output:match("%.dylib$") then
+            and not output:match("%.so$") and not output:match("%.dylib$") then
           local path = vim.fs.normalize(output:sub(1, 1) == "/" and output or dir .. "/" .. output)
           candidates[path] = true
         end
@@ -83,7 +83,7 @@ function M.setup()
   dap.adapters["lldb-dap"] = dap.adapters.lldb
   dap.listeners.on_config.dapui_console = function(config)
     if config.request == "launch" and (config.type == "lldb" or config.type == "lldb-dap")
-      and config.console == nil then
+        and config.console == nil then
       config.console = "integratedTerminal"
     end
     return config
@@ -142,9 +142,9 @@ function M.setup()
     layouts = {
       {
         elements = {
-          { id = "scopes", size = 0.35 },
-          { id = "watches", size = 0.30 },
-          { id = "stacks", size = 0.20 },
+          { id = "scopes",      size = 0.35 },
+          { id = "watches",     size = 0.30 },
+          { id = "stacks",      size = 0.20 },
           { id = "breakpoints", size = 0.15 },
         },
         position = "right",
@@ -158,7 +158,7 @@ function M.setup()
     },
     floating = { border = "single", mappings = { close = { "q", "<Esc>" } } },
     controls = {
-      enabled = true,
+      enabled = false,
       element = "console",
       icons = {
         pause = "",
@@ -222,6 +222,9 @@ function M.setup()
   vim.keymap.set("n", "<F11>", dap.step_into, { desc = "Debug: step into" })
   vim.keymap.set("n", "<S-F11>", dap.step_out, { desc = "Debug: step out" })
   vim.keymap.set("n", "<leader>db", dap.toggle_breakpoint, { desc = "Debug: toggle breakpoint" })
+  vim.keymap.set("n", "<leader>dC", function()
+    dap.toggle_breakpoint(vim.fn.input("Condition: "))
+  end, { desc = "Debug: toggle conditional breakpoint" })
   vim.keymap.set("n", "<leader>du", dapui.toggle, { desc = "Debug: toggle panels" })
   vim.keymap.set("n", "<leader>di", function()
     local buf = dapui.elements.console.buffer()
