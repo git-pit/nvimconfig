@@ -26,6 +26,9 @@ function M.setup()
       ['<C-k>'] = { 'show_signature', 'hide_signature', 'fallback' },
     },
     fuzzy = { implementation = 'prefer_rust_with_warning' },
+    sources = {
+      default = { 'lsp', 'path', 'snippets' },
+    },
     completion = {
       menu = { auto_show = true },
       ghost_text = { enabled = false },
