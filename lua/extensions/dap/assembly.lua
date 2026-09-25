@@ -161,7 +161,7 @@ local function render_registers()
   local count = 0
   for _, name in ipairs(current_names) do
     if not shown[name] and (state.registers[name] or name == "xzr") then
-      lines[#lines + 1] = string.format("  %-7s %s", name, register_value(name))
+      lines[#lines + 1] = string.format("  %-7s %s %d", name, register_value(name), vim.fn.str2nr(register_value(name), 16))
       shown[name] = true
       count = count + 1
     end
@@ -173,7 +173,7 @@ local function render_registers()
     lines[#lines + 1] = state.function_status or "Scanning function…"
   else
     for _, name in ipairs(state.function_registers) do
-      lines[#lines + 1] = string.format("  %-7s %s", name, register_value(name))
+      lines[#lines + 1] = string.format("  %-7s %s %d", name, register_value(name), vim.fn.str2nr(register_value(name), 16))
     end
   end
   vim.bo[buf].modifiable = true
