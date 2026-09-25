@@ -6,7 +6,7 @@ function M.setup()
 	vim.keymap.set('n', '<leader>gL', '<cmd>-tab Git log<cr>')
 	vim.keymap.set('n', '<leader>gg', '<cmd>-tab Git<cr>')
 	vim.keymap.set('n', '<leader>gc', '<cmd>-tab Git commit<cr>')
-	vim.keymap.set('n', '<leader>ga', '<cmd>-tab Git commit --ammend<cr>')
+	vim.keymap.set('n', '<leader>ga', '<cmd>-tab Git commit --amend<cr>')
 	vim.keymap.set('n', '<leader>gP', function()
 		local branch = vim.fn['FugitiveHead']() or ''
 		branch = vim.trim(branch)
