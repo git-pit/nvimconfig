@@ -19,13 +19,14 @@ function M.setup()
   require("extensions/dap/cpp").setup(dap, overseer)
 
   -- DAP UI
-  -- require("extensions/dap/dap_ui").setup()
+  require("extensions/dap/dap_ui").setup()
 
   -- Virtual text
   require("extensions/dap/virtual_text").setup()
 
   -- Keymaps
   require("extensions/dap/keymaps").setup(dap)
+  require("extensions/dap/assembly").setup(dap)
 end
 
 M.setup()
