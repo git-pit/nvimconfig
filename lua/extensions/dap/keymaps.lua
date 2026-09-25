@@ -29,16 +29,16 @@ function M.setup(dap)
     previous_arrows = nil
   end
 
-  dap.listeners.after.event_initialized.dapui = function()
+  dap.listeners.after.event_initialized.arrow_key_maps = function()
     enable_arrow_steps()
   end
-  dap.listeners.before.event_terminated.dapui = function()
+  dap.listeners.before.event_terminated.arrow_key_maps = function()
     disable_arrow_steps()
   end
-  dap.listeners.before.event_exited.dapui = function()
+  dap.listeners.before.event_exited.arrow_key_maps = function()
     disable_arrow_steps()
   end
-  dap.listeners.after.disconnect.dapui = function()
+  dap.listeners.after.disconnect.arrow_key_maps = function()
     disable_arrow_steps()
   end
 
