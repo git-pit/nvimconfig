@@ -100,6 +100,16 @@ function M.setup()
       stopOnEntry = false,
     },
     {
+      name = "Build with make and debug with args",
+      type = "lldb",
+      request = "launch",
+      preLaunchTask = "C++: make",
+      program = executable,
+      cwd = project_dir,
+      args = function () return vim.split(vim.fn.input("Args: "), ' ', { trimempty = true }) end,
+      stopOnEntry = false,
+    },
+    {
       name = "Debug executable (no build)",
       type = "lldb",
       request = "launch",
@@ -204,6 +214,7 @@ function M.setup()
   end
 
   dap.listeners.after.event_initialized.dapui = function()
+    dapui.close()
     dapui.open()
     enable_arrow_steps()
   end
