@@ -4,8 +4,10 @@ function M.setup()
   vim.pack.add({
     { src = "https://github.com/mfussenegger/nvim-dap" },
     { src = "https://github.com/nvim-neotest/nvim-nio" },
-    { src = "https://github.com/theHamsta/nvim-dap-virtual-text" },
+    -- { src = "https://github.com/theHamsta/nvim-dap-virtual-text" },
   })
+
+  vim.opt.runtimepath:prepend(vim.fn.stdpath("config") .. "/plugins_source/nvim-dap-virtual-text")
 
   local dap = require("dap")
   local overseer = require("overseer")
@@ -19,7 +21,7 @@ function M.setup()
   -- CPP dap
   require("extensions/dap/cpp").setup(dap, overseer)
 
-  require("extensions/dap/dap_ui").setup()
+  -- require("extensions/dap/dap_ui").setup()
 
   require("nvim-dap-virtual-text").setup({
     virt_text_pos = "eol",
