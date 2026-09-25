@@ -58,6 +58,9 @@ function M.setup()
   -- Search in certain path commands
   vim.keymap.set({ 'n', 'v' }, '<leader>fis', function() fzf.live_grep({ cwd = "~/.config/nvim", query = "" }) end)
   vim.keymap.set({ 'n', 'v' }, '<leader>fif', function() fzf.files({ cwd = "~/.config/nvim", query = "" }) end)
+
+  vim.keymap.set({ 'n', 'v' }, '<leader>fIs', function() fzf.live_grep({ cwd = "~/.local/share/nvim/", query = "" }) end)
+  vim.keymap.set({ 'n', 'v' }, '<leader>fIf', function() fzf.files({ cwd = "~/.local/share/nvim/", query = "" }) end)
 end
 
 M.setup()
