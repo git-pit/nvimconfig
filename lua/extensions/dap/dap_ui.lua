@@ -1,6 +1,6 @@
 local M = {}
 
-function M.setup()
+function M.setup(dap)
   vim.pack.add({ { src = "https://github.com/rcarriga/nvim-dap-ui" } })
   local dapui = require("dapui")
   require("extensions/dap/dapui_edit").setup()
@@ -71,6 +71,16 @@ function M.setup()
     render = { indent = 1, max_value_lines = 100 },
   })
 
+  dap.listeners.after.event_initialized.dapui = function()
+    dapui.close()
+  end
+  -- dap.listeners.before.event_terminated.dapui = function()
+  -- end
+  -- dap.listeners.before.event_exited.dapui = function()
+  -- end
+  -- dap.listeners.after.disconnect.dapui = function()
+  -- end
+
   -- Dap UI keymaps
   vim.keymap.set("n", "<leader>du", dapui.toggle, { desc = "Debug: toggle panels" })
   vim.keymap.set("n", "<leader>di", function()
@@ -90,7 +100,7 @@ function M.setup()
     end
   end, { desc = "Debug: focus program terminal" })
   vim.keymap.set({ "n", "v" }, "<leader>de", dapui.eval, { desc = "Debug: evaluate expression" })
-  vim.keymap.set("n", "<leader>dw", function()
+  vim.keymap.set({ "n", "v" }, "<leader>dw", function()
     dapui.elements.watches.add(vim.fn.expand("<cword>"))
   end, { desc = "Debug: watch word" })
 end
