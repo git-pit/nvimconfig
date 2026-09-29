@@ -54,6 +54,7 @@ function M.setup(dap)
   end, { desc = "Debug: toggle conditional breakpoint" })
   vim.keymap.set("n", "<leader>dr", dap.repl.open, { desc = "Debug: open REPL" })
   vim.keymap.set("n", "<leader>dt", dap.terminate, { desc = "Debug: terminate" })
+  vim.keymap.set("n", "<leader>dP", dap.pause, { desc = "Debug: pause" })
 
   -- Widgets
   local widgets = require('dap.ui.widgets')
@@ -72,7 +73,7 @@ function M.setup(dap)
 
   vim.keymap.set("n", "<leader>dB",
     function()
-      widgets.centered_float(widgets.breakpoints, floating_widget_size)
+      dap.list_breakpoints()
     end)
 
   vim.keymap.set("n", "<leader>df",
