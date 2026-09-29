@@ -111,7 +111,7 @@ local function register_name(word)
       or name:match("^[xyz]mm%d+$") then return name end
   if name:match("^r[a-d]x$") or name:match("^r[bs]p$")
       or name == "rsi" or name == "rdi" or name == "rip" or name == "rflags"
-      or name == "eflags" or name == "sp" or name == "pc" or name == "nzcv"
+      or name == "eflags" or name == "sp" or name == "pc" or name == "cpsr"
       or name == "xzr" then return name end
   return nil
 end
@@ -132,7 +132,7 @@ local function instruction_registers(instruction)
   if mnemonic == "cmp" or mnemonic == "cmn" or mnemonic == "tst" or mnemonic == "test"
       or mnemonic == "adds" or mnemonic == "subs" or mnemonic:match("^b%.")
       or (mnemonic:match("^j[%a]+$") and mnemonic ~= "jmp") then
-    add("nzcv")
+    add("cpsr")
     add("rflags")
   end
   return names
