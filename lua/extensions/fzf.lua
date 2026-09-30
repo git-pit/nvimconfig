@@ -38,6 +38,7 @@ function M.setup()
   vim.keymap.set({ 'n', 'v' }, '<leader>fR', '<cmd>FzfLua resume<cr>')
   vim.keymap.set({ 'n', 'v' }, '<leader>fh', '<cmd>FzfLua history<cr>')
   vim.keymap.set({ 'n', 'v' }, '<leader>fH', '<cmd>FzfLua help_tags<cr>')
+  vim.keymap.set({ 'n', 'v' }, '<leader>fj', '<cmd>FzfLua jumps<cr>')
 
   -- LSP mappings
   vim.keymap.set({ 'n', 'v' }, '<leader>lf', '<cmd>FzfLua lsp_finder                <cr>')
