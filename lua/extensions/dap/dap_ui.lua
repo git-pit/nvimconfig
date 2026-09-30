@@ -73,6 +73,7 @@ function M.setup(dap)
 
   dap.listeners.after.event_initialized.dapui = function()
     dapui.close()
+    dapui.open()
   end
   -- dap.listeners.before.event_terminated.dapui = function()
   -- end
