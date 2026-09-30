@@ -28,6 +28,27 @@ function M.setup()
     fuzzy = { implementation = 'prefer_rust_with_warning' },
     sources = {
       default = { 'lsp', 'path', 'snippets' },
+      providers = {
+        lsp = {
+          transform_items = function(_, items)
+            for _, item in ipairs(items) do
+              local client = item.client_id and vim.lsp.get_client_by_id(item.client_id)
+              local name = (item.filterText or item.label or ''):match('^%s*([%w_:]+)')
+              if client and client.name == 'clangd' and (name == 'endl' or name == 'std::endl') then
+                -- Stream manipulators are passed as functions, without calling them.
+                local function strip_call(text)
+                  return text and text:gsub('%b()', '')
+                end
+                item.insertText = strip_call(item.insertText)
+                if item.textEdit then
+                  item.textEdit.newText = strip_call(item.textEdit.newText)
+                end
+              end
+            end
+            return items
+          end,
+        },
+      },
     },
     completion = {
       menu = { auto_show = true },
