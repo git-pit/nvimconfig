@@ -13,6 +13,8 @@ function M.setup()
 	vim.keymap.set('n', '<leader>ts', '<cmd>set spell!<cr>')
 	vim.keymap.set('n', '<leader>tl', '<cmd>set rnu! | set nu! | Gitsigns toggle_signs <cr>')
 	vim.keymap.set('n', '<leader>cd', '<cmd>lcd %:h<cr>')
+	vim.keymap.set('v', '<C-a>', [[:s/\%V\d\+/\=submatch(0)+v:count1/g<cr>]])
+
 
 	-- The ultimate 1-1 Vim Terminal <C-w> parser for Neovim
 	vim.keymap.set('t', '<C-w>', function()
