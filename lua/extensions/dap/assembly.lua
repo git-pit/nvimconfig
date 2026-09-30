@@ -240,7 +240,7 @@ local function open_view()
   vim.cmd("aboveleft split")
   state.register_win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(state.register_win, state.register_buf)
-  vim.api.nvim_win_set_height(state.register_win, 14)
+  vim.api.nvim_win_set_height(state.register_win, 20)
   vim.wo[state.register_win].number = false
   vim.wo[state.register_win].relativenumber = false
   vim.wo[state.register_win].wrap = false
