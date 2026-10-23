@@ -4,6 +4,7 @@ vim.pack.add({ { src = 'https://github.com/neovim/nvim-lspconfig' } })
 require("extensions/mason")
 
 function M.setup()
+	require('extensions.cppdocs').setup()
 	local lspconfig_defaults = require("lspconfig").util.default_config
 	require("mason-lspconfig").setup({
 		config = function(_, opts)
