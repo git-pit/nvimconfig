@@ -50,7 +50,7 @@ function M.setup(dap)
       {
         elements = { "console" },
         position = "bottom",
-        size = 10,
+        size = 20,
       },
     },
     floating = { border = "single", mappings = { close = { "q", "<Esc>" } } },
