@@ -14,7 +14,6 @@ require("extensions/lazydev")
 
 -- file manager extensions
 require("extensions/yazi")
--- require("extensions/zoxide")
 
 -- search plugins
 require("extensions/fzf")
