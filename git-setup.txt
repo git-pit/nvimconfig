@@ -1,0 +1,10 @@
+gh auth login
+
+git config --global url."git@github.com:".insteadOf "https://github.com/"
+
+add to ~/.ssh/config
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
