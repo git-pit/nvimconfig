@@ -27,7 +27,7 @@ function M.setup()
     },
     fuzzy = { implementation = 'prefer_rust_with_warning' },
     sources = {
-      default = { 'lsp', 'path', 'snippets' },
+      default = { 'lsp', 'path', 'snippets', 'buffer' },
       providers = {
         lsp = {
           transform_items = function(_, items)
@@ -47,6 +47,9 @@ function M.setup()
             end
             return items
           end,
+        },
+        buffer = {
+          score_offset = -95,
         },
       },
     },
