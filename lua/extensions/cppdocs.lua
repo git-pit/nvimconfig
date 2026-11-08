@@ -211,6 +211,9 @@ local function show(symbol, lines, code, width)
 	vim.bo[buf].modifiable = false
 	vim.bo[buf].bufhidden = 'wipe'
 	highlight(buf, lines, code)
+	pcall(vim.api.nvim_buf_set_name, buf, 'cppman://' .. symbol)
+	local origin = vim.api.nvim_get_current_win()
+	local previous = vim.api.nvim_get_current_buf()
 	local height = math.max(1, math.min(#lines, math.floor(vim.o.lines * 0.75), vim.o.lines - 4))
 	local win = vim.api.nvim_open_win(buf, true, {
 		relative = 'editor',
@@ -222,15 +225,60 @@ local function show(symbol, lines, code, width)
 		border = 'rounded',
 		title = ' C++: ' .. symbol .. ' ',
 		title_pos = 'center',
+		footer = ' <CR> here  <C-v> vsplit  <C-s> split  <C-t> tab  q close ',
+		footer_pos = 'center',
 	})
 	vim.wo[win].wrap = false
-	local function close()
+	local replaced = false
+	local function close_float()
 		if vim.api.nvim_win_is_valid(win) then
 			vim.api.nvim_win_close(win, true)
 		end
 	end
-	vim.keymap.set('n', 'q', close, { buffer = buf, silent = true, desc = 'Close C++ documentation' })
-	vim.keymap.set('n', '<Esc>', close, { buffer = buf, silent = true })
+	local function close()
+		if vim.api.nvim_win_is_valid(win) then
+			close_float()
+		elseif replaced and vim.api.nvim_buf_is_valid(previous) then
+			-- Opened in place of the source buffer: go back to it.
+			vim.api.nvim_win_set_buf(0, previous)
+		elseif #vim.api.nvim_list_wins() > 1 then
+			vim.api.nvim_win_close(0, true)
+		else
+			vim.api.nvim_buf_delete(buf, { force = true })
+		end
+	end
+	-- Move the manual out of the float, next to (or in place of) the window
+	-- gK was used from. The buffer is shown in its new window before the
+	-- float closes, so 'bufhidden' doesn't wipe it.
+	local function move(command)
+		return function()
+			if not vim.api.nvim_win_is_valid(win) then return end
+			local cursor = vim.api.nvim_win_get_cursor(win)
+			if vim.api.nvim_win_is_valid(origin) then
+				vim.api.nvim_set_current_win(origin)
+			end
+			if command then
+				vim.cmd(command)
+			else
+				replaced = true
+			end
+			local target = vim.api.nvim_get_current_win()
+			vim.api.nvim_win_set_buf(target, buf)
+			vim.wo[target].wrap = false
+			close_float()
+			vim.api.nvim_set_current_win(target)
+			vim.api.nvim_win_set_cursor(target, cursor)
+		end
+	end
+	local function map(lhs, rhs, desc)
+		vim.keymap.set('n', lhs, rhs, { buffer = buf, silent = true, nowait = true, desc = desc })
+	end
+	map('q', close, 'Close C++ documentation')
+	map('<Esc>', close_float, 'Close C++ documentation popup')
+	map('<CR>', move(), 'Open C++ documentation in this window')
+	map('<C-v>', move('vsplit'), 'Open C++ documentation in a vertical split')
+	map('<C-s>', move('split'), 'Open C++ documentation in a horizontal split')
+	map('<C-t>', move('tab split'), 'Open C++ documentation in a new tab')
 end
 
 -- The full page name (e.g. "std::vector<T,Allocator>::push_back") opens the
@@ -331,7 +379,7 @@ function M.setup()
 		if opts.args ~= '' then
 			M.open(opts.args)
 		else
-			vim.ui.input({ prompt = 'C++ documentation: ', default = M.symbol() }, function(value)
+			vim.ui.input({ prompt = 'C++ documentation: ' }, function(value)
 				if value then M.open(value) end
 			end)
 		end
