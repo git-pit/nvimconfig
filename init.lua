@@ -33,6 +33,7 @@ require("extensions/surround")
 require("extensions/codecompanion")
 require("extensions/dap")
 require("extensions/textobjects")
+require("extensions/grug-far")
 
 require("keymaps")
 require("vimopts")
