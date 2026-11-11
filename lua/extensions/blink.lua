@@ -54,6 +54,63 @@ local function cursor_inside_parens(item)
   end
 end
 
+local c_family = { c = true, cpp = true, objc = true, objcpp = true, cuda = true }
+
+--- clangd answers a completion request triggered by `<`, `>`, `:`, `"` or `/` with nothing
+--- unless it's `->`, `::` or an #include, and blink then keeps asking the same way while
+--- the word is typed. So `make_unique<|>` never got completions for the type. Re-send those
+--- requests as a normal (non trigger character) request instead.
+local function get_lsp_completions(self, ctx, callback)
+  local trigger = ctx.trigger
+  if c_family[vim.bo[ctx.bufnr].filetype] and trigger.kind == 'trigger_character' then
+    local char = trigger.character
+    local before = ctx.line:sub(1, ctx.bounds.start_col - 1)
+    local honoured = char == '.'
+      or (char == '>' and before:sub(-2) == '->')
+      or (char == ':' and before:sub(-2) == '::')
+      or ((char == '<' or char == '"' or char == '/') and before:find('^%s*#%s*include') ~= nil)
+    -- right after `<` offer types straight away (template arguments), for the other
+    -- characters wait until a word is being typed
+    if not honoured and (char == '<' or ctx.bounds.length > 0) then
+      ctx = setmetatable({
+        trigger = vim.tbl_extend('force', trigger, { kind = 'keyword', character = vim.NIL }),
+      }, { __index = ctx })
+      ctx.trigger.character = nil
+    end
+  end
+  return self:get_completions(ctx, callback)
+end
+
+local type_kinds = {
+  [kinds.Class] = true,
+  [kinds.Struct] = true,
+  [kinds.Interface] = true,
+  [kinds.Enum] = true,
+  [kinds.TypeParameter] = true,
+}
+
+--- Rank completions by where the cursor is. Neither blink nor the language server type-check
+--- the candidates, so this is a heuristic: where a value is expected (after `=`, `==`, `!=` or `return`),
+--- type names like `nullptr_t` are pushed below values like `nullptr`.
+local function rank_for_context(ctx, items)
+  local before = ctx.line:sub(1, ctx.bounds.start_col - 1)
+  local wants_value = before:find('[^=!<>+%-*/%%&|^]=%s*$') ~= nil -- assignment / initialisation
+    or before:find('[=!]=%s*$') ~= nil -- comparison
+    or before:find('%f[%w_]return%s+$') ~= nil
+  local snippet_offset = require('blink.cmp.config').snippets.score_offset
+
+  for _, item in ipairs(items) do
+    local offset = 0
+    if wants_value and type_kinds[item.kind] then offset = offset - 5 end
+    -- clangd reports keywords (`nullptr`, `true`, ...) as snippets, which blink ranks lower.
+    -- Undo that for ones that insert plain text.
+    local text = type(item.textEdit) == 'table' and item.textEdit.newText or item.insertText or item.label
+    if item.kind == kinds.Snippet and not text:find('$', 1, true) then offset = offset - snippet_offset end
+    item.score_offset = offset
+  end
+  return items
+end
+
 --- Collapse function overloads into a single completion item showing only the name.
 local function collapse_overloads(_, items)
   local seen, out = {}, {}
@@ -77,49 +134,6 @@ local function collapse_overloads(_, items)
     end
   end
   return out
-end
-
--- Exiting calls: every accepted call gets an extmark spanning its `(...)`, and
--- <CR> jumps past the `)` of the innermost one around the cursor (so nested calls
--- are exited one <CR> at a time). Marks are dropped when returning to normal mode.
-local call_ns = vim.api.nvim_create_namespace('blink_accepted_calls')
-
-local function track_accepted_call(item)
-  if not callable_kinds[item.kind] then return end
-  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
-  local line = vim.api.nvim_get_current_line()
-  -- normally the cursor is inside the `()`. For templates like `make_unique<T>()` it starts
-  -- on the template argument instead, so look for the parens further along the line.
-  local open = line:sub(col, col + 1) == '()' and col or line:find('()', col + 1, true)
-  if not open then return end
-  vim.api.nvim_buf_set_extmark(0, call_ns, row - 1, open - 1, { end_row = row - 1, end_col = open + 1 })
-end
-
-local function exit_call()
-  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
-  row = row - 1
-  local marks = vim.api.nvim_buf_get_extmarks(0, call_ns, { row, col }, { row, col }, { details = true, overlap = true })
-
-  local best
-  for _, mark in ipairs(marks) do
-    local id, srow, scol, erow, ecol = mark[1], mark[2], mark[3], mark[4].end_row, mark[4].end_col
-    local closing = vim.api.nvim_buf_get_text(0, erow, math.max(ecol - 1, 0), erow, ecol, {})[1]
-    if closing ~= ')' then
-      vim.api.nvim_buf_del_extmark(0, call_ns, id) -- the call was edited away
-    else
-      local after_open = row > srow or col > scol
-      local before_close = row < erow or col < ecol
-      local innermost = not best or srow > best.srow or (srow == best.srow and scol > best.scol)
-      if after_open and before_close and innermost then
-        best = { id = id, srow = srow, scol = scol, erow = erow, ecol = ecol }
-      end
-    end
-  end
-  if not best then return false end
-
-  vim.api.nvim_buf_del_extmark(0, call_ns, best.id)
-  vim.api.nvim_win_set_cursor(0, { best.erow + 1, best.ecol })
-  return true
 end
 
 -- 'cinkeys'/'indentkeys' only fire on typed characters, so a completed label such as
@@ -293,7 +307,7 @@ function M.setup()
       },
       -- ['<S-Tab>'] = { 'snippet_backward', 'fallback' },
       ['<C-y>'] = {'accept', 'fallback'},
-      ['<CR>'] = { 'snippet_forward', exit_call, 'fallback' },
+      ['<CR>'] = { 'snippet_forward', function() return require('autopairs').enter() end, 'fallback' },
       ['<S-CR>'] = {'snippet_backward', 'fallback'},
       ['<Up>'] = { 'select_prev', 'fallback' },
       ['<Down>'] = { 'select_next', 'fallback' },
@@ -312,7 +326,8 @@ function M.setup()
       default = { 'lsp', 'path', 'snippets', 'buffer' },
       providers = {
         lsp = {
-          transform_items = collapse_overloads,
+          transform_items = function(ctx, items) return rank_for_context(ctx, collapse_overloads(ctx, items)) end,
+          override = { get_completions = get_lsp_completions },
         },
         buffer = {
           score_offset = -95,
@@ -327,21 +342,8 @@ function M.setup()
   setup_signature_cycling()
 
   require('blink.cmp.completion.list').accept_emitter:on(function(ev)
-    track_accepted_call(ev.item)
     reindent_accepted_label()
   end)
-  -- only when really back in normal mode: selecting a snippet placeholder (e.g. a template
-  -- argument) passes through normal mode too, and the calls must survive that
-  vim.api.nvim_create_autocmd('ModeChanged', {
-    pattern = '*:n',
-    group = vim.api.nvim_create_augroup('BlinkAcceptedCalls', { clear = true }),
-    callback = function(ev)
-      vim.schedule(function()
-        if vim.api.nvim_get_mode().mode ~= 'n' then return end
-        if vim.api.nvim_buf_is_valid(ev.buf) then vim.api.nvim_buf_clear_namespace(ev.buf, call_ns, 0, -1) end
-      end)
-    end,
-  })
 
   -- show the signature window whenever the cursor is inside a call, not just after typing `(`
   vim.api.nvim_create_autocmd({ 'InsertEnter', 'CursorMovedI' }, {

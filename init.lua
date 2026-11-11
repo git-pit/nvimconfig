@@ -4,6 +4,9 @@ vim.pack.add({ { src = 'https://github.com/nvim-tree/nvim-web-devicons' } })
 vim.pack.add({ { src = 'https://github.com/nvim-lua/plenary.nvim' } })
 vim.pack.add({ { src = 'https://github.com/nvim-treesitter/nvim-treesitter' } })
 
+-- auto-closing pairs (before blink, which wraps <CR>)
+require("autopairs").setup()
+
 -- lsp plugins
 require("extensions/blink")
 require("extensions/mason")
