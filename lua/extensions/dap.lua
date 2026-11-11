@@ -12,6 +12,17 @@ function M.setup()
   -- Overseer is set up before nvim-dap is installed in init.lua.
   overseer.enable_dap()
 
+  -- Restart by terminating and launching a fresh adapter. An adapter-side
+  -- "restart" request (lldb-dap) keeps the old session, so its exception
+  -- diagnostics stay on screen and the relaunched program may never run.
+  local function force_fresh_restart(session)
+    if session.capabilities then
+      session.capabilities.supportsRestartRequest = false
+    end
+  end
+  dap.listeners.after.initialize.fresh_restart = force_fresh_restart
+  dap.listeners.after.event_capabilities.fresh_restart = force_fresh_restart
+
   -- Python dap
   require("extensions/dap/python").setup(dap)
 

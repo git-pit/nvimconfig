@@ -8,10 +8,25 @@ function M.setup(dap, overseer)
     return makefile and vim.fs.dirname(makefile) or vim.fn.getcwd()
   end
 
+  -- Dry-run make without blocking the UI. nvim-dap evaluates config functions
+  -- inside a coroutine, so yield until make finishes when possible.
+  local function make_dry_run(dir)
+    local cmd = { "make", "-B", "-n" }
+    local opts = { cwd = dir, text = true, timeout = 10000 }
+    local co, is_main = coroutine.running()
+    if co and not is_main then
+      vim.system(cmd, opts, vim.schedule_wrap(function(result)
+        coroutine.resume(co, result)
+      end))
+      return coroutine.yield()
+    end
+    return vim.system(cmd, opts):wait()
+  end
+
   local function find_make_executable()
     local dir = make_project_dir()
     if vim.fn.filereadable(dir .. "/Makefile") == 1 then
-      local result = vim.system({ "make", "-B", "-n" }, { cwd = dir, text = true }):wait()
+      local result = make_dry_run(dir)
       if result.code == 0 then
         local candidates = {}
         for output in (result.stdout or ""):gmatch("%-o%s+([^%s]+)") do
@@ -28,7 +43,11 @@ function M.setup(dap, overseer)
         end
       end
     end
-    return vim.fn.input("Executable: ", dir .. "/", "file")
+    local ok, path = pcall(vim.fn.input, "Executable: ", dir .. "/", "file")
+    if not ok or path == "" or vim.fn.isdirectory(path) == 1 then
+      return dap.ABORT
+    end
+    return path
   end
 
   overseer.register_template({
@@ -80,7 +99,8 @@ function M.setup(dap, overseer)
   dap.listeners.on_config.dapui_console = function(config)
     if config.request == "launch" and (config.type == "lldb" or config.type == "lldb-dap")
         and config.console == nil then
-      config.console = "integratedTerminal"
+      -- Return a copy so the original config definition is left untouched.
+      return vim.tbl_extend("force", {}, config, { console = "integratedTerminal" })
     end
     return config
   end
@@ -122,12 +142,17 @@ function M.setup(dap, overseer)
     if filetype ~= "c" and filetype ~= "cpp" then
       return {}
     end
+    -- Only a launch.json that has LLDB configs replaces the fallback.
     local ok, project_configs = pcall(require("dap.ext.vscode").getconfigs)
-    if ok and #project_configs > 0 then
-      return {}
+    if ok then
+      for _, config in ipairs(project_configs) do
+        if config.type == "lldb" or config.type == "lldb-dap" then
+          return {}
+        end
+      end
     end
     if vim.fn.filereadable(make_project_dir() .. "/Makefile") == 0 then
-      return { fallback[2] }
+      return { fallback[3] }
     end
     return fallback
   end

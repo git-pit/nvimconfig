@@ -11,7 +11,7 @@ local state = {
 
 local function address_key(address)
   if not address then return nil end
-  return tostring(address):lower():gsub("^0x0*", "")
+  return (tostring(address):lower():gsub("^0x0*", ""))
 end
 
 local function explain(instruction)
@@ -143,6 +143,20 @@ local function register_value(name)
   return state.registers[name] or "unavailable"
 end
 
+-- Show the decimal value only when it fits a signed 64-bit integer; wider
+-- values (vector registers, high addresses) would be saturated by str2nr.
+local function register_line(name)
+  local value = register_value(name)
+  local hex = value:match("^0[xX](%x+)$")
+  if hex then
+    local digits = hex:gsub("^0+", "")
+    if #digits < 16 or (#digits == 16 and tonumber(digits:sub(1, 1), 16) < 8) then
+      return string.format("  %-7s %s %d", name, value, vim.fn.str2nr(hex, 16))
+    end
+  end
+  return string.format("  %-7s %s", name, value)
+end
+
 local function render_registers()
   local buf = state.register_buf
   if not buf or not vim.api.nvim_buf_is_valid(buf) then return end
@@ -161,7 +175,7 @@ local function render_registers()
   local count = 0
   for _, name in ipairs(current_names) do
     if not shown[name] and (state.registers[name] or name == "xzr") then
-      lines[#lines + 1] = string.format("  %-7s %s %d", name, register_value(name), vim.fn.str2nr(register_value(name), 16))
+      lines[#lines + 1] = register_line(name)
       shown[name] = true
       count = count + 1
     end
@@ -173,7 +187,7 @@ local function render_registers()
     lines[#lines + 1] = state.function_status or "Scanning function…"
   else
     for _, name in ipairs(state.function_registers) do
-      lines[#lines + 1] = string.format("  %-7s %s %d", name, register_value(name), vim.fn.str2nr(register_value(name), 16))
+      lines[#lines + 1] = register_line(name)
     end
   end
   vim.bo[buf].modifiable = true
@@ -218,6 +232,14 @@ local function render()
   end
 end
 
+local function set_granularity(granularity)
+  if not state.dap then return end
+  state.dap.defaults.lldb.stepping_granularity = granularity
+  state.dap.defaults["lldb-dap"].stepping_granularity = granularity
+end
+
+local disable
+
 local function open_view()
   if state.win and vim.api.nvim_win_is_valid(state.win) then return end
   state.source_win = vim.api.nvim_get_current_win()
@@ -245,6 +267,19 @@ local function open_view()
   vim.wo[state.register_win].relativenumber = false
   vim.wo[state.register_win].wrap = false
   vim.wo[state.register_win].winfixheight = true
+  -- Closing either window by hand turns assembly stepping off too.
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = vim.api.nvim_create_augroup("dap-assembly-view", { clear = true }),
+    callback = function(args)
+      local closed = tonumber(args.match)
+      if not state.enabled or (closed ~= state.win and closed ~= state.register_win) then return end
+      vim.schedule(function()
+        if not state.enabled then return end
+        disable()
+        vim.notify("Debug stepping: source")
+      end)
+    end,
+  })
   render()
   if vim.api.nvim_win_is_valid(state.source_win) then
     vim.api.nvim_set_current_win(state.source_win)
@@ -252,6 +287,7 @@ local function open_view()
 end
 
 local function close_view()
+  pcall(vim.api.nvim_del_augroup_by_name, "dap-assembly-view")
   if state.register_win and vim.api.nvim_win_is_valid(state.register_win) then
     vim.api.nvim_win_close(state.register_win, true)
   end
@@ -263,6 +299,13 @@ local function close_view()
     vim.api.nvim_set_current_win(state.source_win)
   end
   state.source_win = nil
+end
+
+function disable()
+  state.enabled = false
+  state.generation = state.generation + 1
+  set_granularity("statement")
+  close_view()
 end
 
 local function valid_request(session, generation)
@@ -341,10 +384,13 @@ local function fetch_registers(session, frame, generation)
     session:request("variables", { variablesReference = reference }, function(err, response)
       if valid_request(session, generation) and not err then
         for _, variable in ipairs((response or {}).variables or {}) do
+          -- Registers with children (e.g. vector registers) still carry a value.
+          if variable.name and variable.value and variable.value ~= "" then
+            local key = variable.name:lower()
+            if depth < 2 or values[key] == nil then values[key] = variable.value end
+          end
           if variable.variablesReference and variable.variablesReference > 0 and depth < 2 then
             load(variable.variablesReference, depth + 1)
-          elseif variable.name and variable.value then
-            values[variable.name:lower()] = variable.value
           end
         end
       end
@@ -381,7 +427,8 @@ local function refresh(session)
   scan_function(session, frame, generation)
   session:request("disassemble", {
     memoryReference = state.pc,
-    instructionOffset = -12,
+    -- Counting instructions backwards is only reliable with fixed-width encodings.
+    instructionOffset = vim.uv.os_uname().machine:match("^a[ar][rm]") and -12 or 0,
     instructionCount = 36,
     resolveSymbols = true,
   }, function(err, response)
@@ -398,14 +445,11 @@ local function refresh(session)
 end
 
 function M.setup(dap)
+  state.dap = dap
   state.namespace = vim.api.nvim_create_namespace("dap-assembly-current")
   vim.keymap.set("n", "<leader>da", function()
     if state.enabled then
-      state.enabled = false
-      state.generation = state.generation + 1
-      dap.defaults.lldb.stepping_granularity = "statement"
-      dap.defaults["lldb-dap"].stepping_granularity = "statement"
-      close_view()
+      disable()
       vim.notify("Debug stepping: source")
       return
     end
@@ -416,8 +460,7 @@ function M.setup(dap)
     end
     state.enabled = true
     state.session = session
-    dap.defaults.lldb.stepping_granularity = "instruction"
-    dap.defaults["lldb-dap"].stepping_granularity = "instruction"
+    set_granularity("instruction")
     open_view()
     refresh(session)
     vim.notify("Debug stepping: assembly")
@@ -444,11 +487,7 @@ function M.setup(dap)
   end
   local function stop_view(session)
     if session ~= state.session then return end
-    state.enabled = false
-    state.generation = state.generation + 1
-    dap.defaults.lldb.stepping_granularity = "statement"
-    dap.defaults["lldb-dap"].stepping_granularity = "statement"
-    close_view()
+    disable()
     state.session = nil
   end
   dap.listeners.before.event_terminated.assembly_view = stop_view

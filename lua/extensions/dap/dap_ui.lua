@@ -75,12 +75,6 @@ function M.setup(dap)
     dapui.close()
     dapui.open()
   end
-  -- dap.listeners.before.event_terminated.dapui = function()
-  -- end
-  -- dap.listeners.before.event_exited.dapui = function()
-  -- end
-  -- dap.listeners.after.disconnect.dapui = function()
-  -- end
 
   -- Dap UI keymaps
   vim.keymap.set("n", "<leader>du", dapui.toggle, { desc = "Debug: toggle panels" })
@@ -101,9 +95,14 @@ function M.setup(dap)
     end
   end, { desc = "Debug: focus program terminal" })
   vim.keymap.set({ "n", "v" }, "<leader>de", dapui.eval, { desc = "Debug: evaluate expression" })
-  vim.keymap.set({ "n", "v" }, "<leader>dw", function()
+  vim.keymap.set("n", "<leader>dw", function()
     dapui.elements.watches.add(vim.fn.expand("<cword>"))
   end, { desc = "Debug: watch word" })
+  vim.keymap.set("v", "<leader>dw", function()
+    -- With no argument DAP UI watches the visual selection.
+    dapui.elements.watches.add()
+    vim.api.nvim_feedkeys(vim.keycode("<Esc>"), "n", false)
+  end, { desc = "Debug: watch selection" })
 end
 
 return M
