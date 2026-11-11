@@ -11,7 +11,7 @@ function M.setup()
 	vim.keymap.set({ 'n', 'v', 't' }, '<C-w><C-q>', '<cmd>bd!<cr>')
 	vim.keymap.set('n', '<leader>nb', ':file ')
 	vim.keymap.set('n', '<leader>ts', '<cmd>set spell!<cr>')
-	vim.keymap.set('n', '<leader>tl', '<cmd>set rnu! | set nu! | Gitsigns toggle_signs <cr>')
+	vim.keymap.set('n', '<leader>tl', '<cmd>set rnu! | set nu!<cr>')
 	vim.keymap.set('n', '<leader>cd', '<cmd>lcd %:h<cr>')
 	vim.keymap.set('v', '<C-a>', [[:s/\%V\d\+/\=submatch(0)+v:count1/g<cr>]])
 
