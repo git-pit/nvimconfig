@@ -76,6 +76,7 @@ function M.setup()
 
 		-- 7. Handle opening the command line natively (<C-w>:)
 		if c == ':' then
+			vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes([[<C-\><C-n>]], true, true, true), 'n', false)
 			vim.api.nvim_feedkeys(':', 'n', false)
 			return
 		end
