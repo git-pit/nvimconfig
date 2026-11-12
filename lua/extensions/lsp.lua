@@ -6,12 +6,18 @@ require("extensions/mason")
 function M.setup()
 	require('extensions.cppdocs').setup()
 	local lspconfig_defaults = require("lspconfig").util.default_config
+
+	-- Mason's clangd is upstream LLVM and doesn't know Apple clang's implicit include
+	-- dirs (e.g. /usr/local/include), so let it ask the real compiler for them.
+	vim.lsp.config('clangd', {
+		cmd = { 'clangd', '--query-driver=/usr/bin/c++,/usr/bin/cc,/usr/bin/clang,/usr/bin/clang++' },
+	})
 	require("mason-lspconfig").setup({
 		config = function(_, opts)
 			local lspconfig = require("lspconfig")
 			for server, config in pairs(opts.servers) do
 				-- if server ~= 'jdtls' then
-				config.capabilites = require('blink.cmp').get_lsp_capabilites(config.capabilities)
+				config.capabilities = require('blink.cmp').get_lsp_capabilities(config.capabilities)
 				lspconfig[server].setup(config)
 			end
 		end
