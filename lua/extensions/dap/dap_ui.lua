@@ -3,7 +3,7 @@ local M = {}
 function M.setup(dap)
   vim.pack.add({ { src = "https://github.com/rcarriga/nvim-dap-ui" } })
   local dapui = require("dapui")
-  require("extensions/dap/dapui_edit").setup()
+  require("extensions.dap.dapui_edit").setup()
   dapui.setup({
     wrap = false,
     icons = { expanded = "", collapsed = "", current_frame = "" },

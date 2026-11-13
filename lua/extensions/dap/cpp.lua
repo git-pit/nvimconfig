@@ -1,10 +1,10 @@
 local M = {}
 
 function M.setup(dap, overseer)
-  local function make_project_dir()
+  local function project_dir(filename)
     local file = vim.api.nvim_buf_get_name(0)
     local start = file ~= "" and vim.fs.dirname(file) or vim.fn.getcwd()
-    local makefile = vim.fs.find("Makefile", { path = start, upward = true })[1]
+    local makefile = vim.fs.find(filename, { path = start, upward = true })[1]
     return makefile and vim.fs.dirname(makefile) or vim.fn.getcwd()
   end
 
@@ -24,7 +24,7 @@ function M.setup(dap, overseer)
   end
 
   local function find_make_executable()
-    local dir = make_project_dir()
+    local dir = project_dir("Makefile")
     if vim.fn.filereadable(dir .. "/Makefile") == 1 then
       local result = make_dry_run(dir)
       if result.code == 0 then
@@ -50,12 +50,59 @@ function M.setup(dap, overseer)
     return path
   end
 
+  local function find_cmake_executable()
+    local dir = project_dir("CMakeLists.txt")
+    if vim.fn.filereadable(dir .. "/CMakeLists.txt") == 1 then
+      local result = make_dry_run(dir)
+      if result.code == 0 then
+        local candidates = {}
+
+        for output in (result.stdout or ""):gmatch("Built target (%a+)") do
+          output = output:gsub("^[\"']", ""):gsub("[\"']$", "")
+          if not output:match("%.o$") and not output:match("%.a$")
+              and not output:match("%.so$") and not output:match("%.dylib$") then
+            local path = vim.fs.normalize(output:sub(1, 1) == "/" and output or dir .. "/" .. output)
+            candidates[path] = true
+          end
+        end
+        local paths = vim.tbl_keys(candidates)
+        if #paths == 1 then
+          return paths[1]
+        end
+      end
+    end
+    local ok, path = pcall(vim.fn.input, "Executable: ", dir .. "/", "file")
+    if not ok or path == "" or vim.fn.isdirectory(path) == 1 then
+      return dap.ABORT
+    end
+    return path
+  end
+
   overseer.register_template({
     name = "make",
     builder = function()
       return {
         cmd = { "make" },
-        cwd = make_project_dir(),
+        cwd = project_dir("Makefile"),
+        components = {
+          {
+            "on_output_quickfix",
+            open_on_exit = "failure",
+            open_height = 8,
+            errorformat = vim.o.errorformat,
+          },
+          "default",
+        },
+      }
+    end,
+  })
+
+  overseer.register_template({
+    name = "cmake-build",
+    builder = function()
+      return {
+        cmd = { "cmake . && make" },
+        cwd = project_dir("Makefile"),
         components = {
           {
             "on_output_quickfix",
@@ -112,7 +159,17 @@ function M.setup(dap, overseer)
       request = "launch",
       preLaunchTask = "make",
       program = find_make_executable,
-      cwd = make_project_dir,
+      cwd = project_dir("Makefile"),
+      stopOnEntry = false,
+      console = "integratedTerminal",
+    },
+    {
+      name = "Build with cmake and debug",
+      type = "lldb",
+      request = "launch",
+      preLaunchTask = "cmake-build",
+      program = find_cmake_executable,
+      cwd = project_dir("Makefile"),
       stopOnEntry = false,
       console = "integratedTerminal",
     },
@@ -122,7 +179,7 @@ function M.setup(dap, overseer)
       request = "launch",
       preLaunchTask = "make",
       program = find_make_executable,
-      cwd = make_project_dir,
+      cwd = project_dir("Makefile"),
       args = function() return vim.split(vim.fn.input("Args: "), ' ', { trimempty = true }) end,
       stopOnEntry = false,
       console = "integratedTerminal",
@@ -132,7 +189,7 @@ function M.setup(dap, overseer)
       type = "lldb",
       request = "launch",
       program = find_make_executable,
-      cwd = make_project_dir,
+      cwd = project_dir("Makefile"),
       stopOnEntry = false,
       console = "integratedTerminal",
     },
@@ -151,7 +208,7 @@ function M.setup(dap, overseer)
         end
       end
     end
-    if vim.fn.filereadable(make_project_dir() .. "/Makefile") == 0 then
+    if vim.fn.filereadable(project_dir("Makefile") .. "/Makefile") == 0 then
       return { fallback[3] }
     end
     return fallback

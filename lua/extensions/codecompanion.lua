@@ -47,10 +47,10 @@ function M.setup()
 
   vim.keymap.set('n', '<leader>ct', function()
     require('codecompanion').toggle_cli()
-  end, { desc = 'Toggle Codex CLI' })
+  end, { desc = 'Toggle Claude CLI' })
   vim.keymap.set({ 'n', 'x' }, '<leader>cc', function()
     require('codecompanion').cli({ prompt = true })
-  end, { desc = 'Edit Codex prompt' })
+  end, { desc = 'Edit Claude prompt' })
   vim.keymap.set('x', '<leader>cs', ':CodeCompanionCLI<cr>', { desc = 'Send selection to Claude CLI' })
   vim.keymap.set('x', '<leader>ce', function()
     local cc = require('codecompanion')
@@ -67,7 +67,5 @@ function M.setup()
     cc.cli('Can you explain #{this}?', { submit = true })
   end, { desc = 'Explain selection in new Claude chat' })
 end
-
-M.setup()
 
 return M

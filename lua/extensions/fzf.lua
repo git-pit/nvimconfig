@@ -66,6 +66,4 @@ function M.setup()
   vim.keymap.set({ 'n', 'v' }, '<leader>fIf', function() fzf.files({ cwd = "~/.local/share/nvim/", query = "" }) end)
 end
 
-M.setup()
-
 return M

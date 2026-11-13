@@ -14,12 +14,12 @@ function M.setup()
         ['ctrl-x'] = function(selected)
           if selected and #selected > 0 then
             local dir = selected[1]
-            vim.system({'zoxide', 'remove', dir})
+            vim.system({ 'zoxide', 'remove', dir }):wait()
             zoxide_manager()
           end
         end,
         ['ctrl-a'] = function ()
-          vim.system({'zoxide', 'add', vim.fn.getcwd()})
+          vim.system({ 'zoxide', 'add', vim.fn.getcwd() }):wait()
           zoxide_manager()
         end
       },
@@ -27,7 +27,5 @@ function M.setup()
   end
   vim.keymap.set({'', '!', 't'}, '<M-z>', function () zoxide_manager() end)
 end
-
-M.setup()
 
 return M

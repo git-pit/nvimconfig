@@ -1,42 +1,43 @@
 vim.g.mapleader = ' '
 vim.loader.enable()
-vim.pack.add({ { src = 'https://github.com/nvim-tree/nvim-web-devicons' } })
-vim.pack.add({ { src = 'https://github.com/nvim-lua/plenary.nvim' } })
-vim.pack.add({ { src = 'https://github.com/nvim-treesitter/nvim-treesitter' } })
+vim.pack.add({
+  { src = 'https://github.com/nvim-tree/nvim-web-devicons' },
+  { src = 'https://github.com/nvim-lua/plenary.nvim' },
+})
 
 -- auto-closing pairs (before blink, which wraps <CR>)
-require("autopairs").setup()
+require('autopairs').setup()
 
--- lsp plugins
-require("extensions/blink")
-require("extensions/mason")
-require("extensions/lsp")
+-- Set up in order: zoxide needs fzf, dap needs overseer.
+local extensions = {
+  'treesitter',
+  -- lsp
+  'blink',
+  'mason',
+  'lsp',
+  'lazydev',
+  -- file manager
+  'yazi',
+  -- search
+  'fzf',
+  'zoxide',
+  'fff',
+  -- movement
+  'hop',
+  -- git
+  'fugitive',
+  'gitsigns',
+  -- misc
+  'overseer',
+  'surround',
+  'codecompanion',
+  'dap',
+  'textobjects',
+  'grug-far',
+}
+for _, name in ipairs(extensions) do
+  require('extensions.' .. name).setup()
+end
 
--- lsp extensions
-require("extensions/lazydev")
-
--- file manager extensions
-require("extensions/yazi")
-
--- search plugins
-require("extensions/fzf")
-require("extensions/zoxide")
-require("extensions/fff")
-
--- movement plugins
-require("extensions/hop")
-
--- git extensions
-require("extensions/fugitive")
-require("extensions/gitsigns")
-
--- misc
-require("extensions/overseer")
-require("extensions/surround")
-require("extensions/codecompanion")
-require("extensions/dap")
-require("extensions/textobjects")
-require("extensions/grug-far")
-
-require("keymaps")
-require("vimopts")
+require('keymaps').setup()
+require('vimopts').setup()

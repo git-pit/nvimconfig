@@ -8,6 +8,4 @@ function M.setup()
   vim.keymap.set({ 'n', 'x', 'o' }, 'f', '<cmd>HopChar1<cr>')
 end
 
-M.setup()
-
 return M

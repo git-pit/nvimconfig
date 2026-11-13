@@ -1,49 +1,32 @@
 local M = {}
-vim.pack.add({ { src = 'https://github.com/neovim/nvim-lspconfig' } })
-
-require("extensions/mason")
 
 function M.setup()
-	require('extensions.cppdocs').setup()
-	local lspconfig_defaults = require("lspconfig").util.default_config
+  vim.pack.add({ { src = 'https://github.com/neovim/nvim-lspconfig' } })
+  require('extensions.cppdocs').setup()
 
-	-- Mason's clangd is upstream LLVM and doesn't know Apple clang's implicit include
-	-- dirs (e.g. /usr/local/include), so let it ask the real compiler for them.
-	vim.lsp.config('clangd', {
-		cmd = { 'clangd', '--query-driver=/usr/bin/c++,/usr/bin/cc,/usr/bin/clang,/usr/bin/clang++' },
-	})
-	require("mason-lspconfig").setup({
-		config = function(_, opts)
-			local lspconfig = require("lspconfig")
-			for server, config in pairs(opts.servers) do
-				-- if server ~= 'jdtls' then
-				config.capabilities = require('blink.cmp').get_lsp_capabilities(config.capabilities)
-				lspconfig[server].setup(config)
-			end
-		end
-	})
+  -- Mason's clangd is upstream LLVM and doesn't know Apple clang's implicit include
+  -- dirs (e.g. /usr/local/include), so let it ask the real compiler for them.
+  vim.lsp.config('clangd', {
+    cmd = { 'clangd', '--query-driver=/usr/bin/c++,/usr/bin/cc,/usr/bin/clang,/usr/bin/clang++' },
+  })
 
-	vim.api.nvim_create_autocmd("LspAttach", {
-		desc = 'LSP actions',
-		callback = function(event)
-			local opts = { buffer = event.buf }
+  -- Servers are enabled by mason-lspconfig (extensions.mason) and get their completion
+  -- capabilities from blink.cmp. K, grr, gra, grn and gri are Neovim defaults.
+  vim.api.nvim_create_autocmd("LspAttach", {
+    desc = 'LSP actions',
+    callback = function(event)
+      local opts = { buffer = event.buf }
 
-			vim.keymap.set('n', '<F2>', vim.lsp.buf.rename, opts)
-			vim.keymap.set('n', '<F4>', vim.lsp.buf.code_action, opts)
-			vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
-			vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
-			vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
-			vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)
-			vim.keymap.set('n', 'grr', vim.lsp.buf.references, opts)
-			vim.keymap.set('n', 'gra', vim.lsp.buf.code_action, opts)
-			vim.keymap.set('n', 'gs', vim.lsp.buf.signature_help, opts)
-			vim.keymap.set({'n', 'x'}, '<F3>', function()
-				vim.lsp.buf.format({async=true})
-			end, opts)
-		end,
-	})
+      vim.keymap.set('n', '<F2>', vim.lsp.buf.rename, opts)
+      vim.keymap.set('n', '<F4>', vim.lsp.buf.code_action, opts)
+      vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
+      vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
+      vim.keymap.set('n', 'gs', vim.lsp.buf.signature_help, opts)
+      vim.keymap.set({ 'n', 'x' }, '<F3>', function()
+        vim.lsp.buf.format({ async = true })
+      end, opts)
+    end,
+  })
 end
-
-M.setup()
 
 return M
